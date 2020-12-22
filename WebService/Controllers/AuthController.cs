@@ -33,5 +33,16 @@ namespace WebService.Controllers
             }
             return Ok(response);
         }
+
+        [HttpPost("Login")]
+        public async Task<IActionResult> Login(UserLoginDto request)
+        {
+            ServiceResponse<string> response = await authRepo.Login(request.Email, request.Password);
+            if (!response.Success)
+            {
+                return BadRequest(response);
+            }
+            return Ok(response);
+        }
     }
 }
