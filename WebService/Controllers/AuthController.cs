@@ -1,8 +1,10 @@
-﻿using Dtos.UserDto;
+﻿using Dtos;
+using Dtos.UserDto;
 using Microsoft.AspNetCore.Mvc;
 using Models.Responses;
 using Models.Users;
 using Repositories;
+using Services;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,10 +17,27 @@ namespace WebService.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IAuthRepository authRepo;
+        private readonly IMailService mailService;
 
-        public AuthController(IAuthRepository authRepo)
+        public AuthController(IAuthRepository authRepo, IMailService mailService)
         {
             this.authRepo = authRepo;
+            this.mailService = mailService;
+        }
+
+        [HttpPost("send")]
+        public async Task<IActionResult> SendMail(MailRequestDto req)
+        {
+            try
+            {
+                await mailService.SendEmailAsync(req.Mail, req.Subject, req.Body);
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                throw;
+            }
+
         }
 
         [HttpPost("Register")]

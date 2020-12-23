@@ -9,6 +9,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using Repositories;
+using Services;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -32,6 +33,7 @@ namespace WebService
             services.AddDbContextPool<DataContext>(x => x.UseMySQL(Configuration.GetConnectionString("DefaultConnection")));
             services.AddControllers();
             services.AddScoped<IAuthRepository, AuthRepository>();
+            services.AddTransient<IMailService, MailService>();
             services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(options =>
                 {
