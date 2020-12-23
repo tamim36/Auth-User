@@ -15,28 +15,26 @@ namespace Services
 {
     public class MailService : IMailService
     {
-        private readonly IOptions<MailSettings> mailSettings;
+        private readonly MailSettings mailSettings;
 
         public MailService(IOptions<MailSettings> mailSettings)
         {
-            this.mailSettings = mailSettings;
+            this.mailSettings = mailSettings.Value;
         }
         public async Task SendEmailAsync(string mail, string subject, string body)
         {
             try
             {
                 var email = new MimeMessage();
-                string hostmail = "titnet4@gmail.com";
-                email.Sender = MailboxAddress.Parse(hostmail);
+                email.Sender = MailboxAddress.Parse(mailSettings.SenderMail);
                 email.To.Add(MailboxAddress.Parse(mail));
                 email.Subject = subject;
                 var builder = new BodyBuilder();
                 builder.HtmlBody = body;
                 email.Body = builder.ToMessageBody();
                 using var smtp = new SmtpClient();
-                await smtp.ConnectAsync("smtp.gmail.com", 587, SecureSocketOptions.StartTls);
-                string pass = "trust1315";
-                smtp.Authenticate(hostmail, pass);
+                await smtp.ConnectAsync(mailSettings.Server, mailSettings.Port, SecureSocketOptions.StartTls);
+                smtp.Authenticate(mailSettings.SenderMail, mailSettings.SenderMailPassword);
                 await smtp.SendAsync(email);
                 smtp.Disconnect(true);
             } catch(Exception ex)

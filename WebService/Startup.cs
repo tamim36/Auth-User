@@ -1,3 +1,4 @@
+using Entities;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -31,6 +32,7 @@ namespace WebService
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddDbContextPool<DataContext>(x => x.UseMySQL(Configuration.GetConnectionString("DefaultConnection")));
+            services.Configure<MailSettings>(Configuration.GetSection("MailSettings"));
             services.AddControllers();
             services.AddScoped<IAuthRepository, AuthRepository>();
             services.AddTransient<IMailService, MailService>();
