@@ -9,6 +9,8 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using System.Threading.Tasks;
+using Services;
+using System.Security.Cryptography;
 
 namespace Repositories
 {
@@ -16,11 +18,13 @@ namespace Repositories
     {
         private readonly DataContext context;
         private readonly IConfiguration configuration;
+        private readonly IMailService mailService;
 
-        public AuthRepository(DataContext context, IConfiguration configuration)
+        public AuthRepository(DataContext context, IConfiguration configuration, IMailService mailService)
         {
             this.context = context;
             this.configuration = configuration;
+            this.mailService = mailService;
         }
 
         public async Task<ServiceResponse<string>> Login(string email, string password)
@@ -64,6 +68,21 @@ namespace Repositories
             return response;
         }
 
+        public async Task<ServiceResponse<string>> ForgotPassword(string email)
+        {
+            ServiceResponse<string> response = new ServiceResponse<string>();
+            if (!await EmailExists(email))
+            {
+                response.Success = false;
+                response.Message = "No user found on that Email";
+                return response;
+            }
+            var token = RandomTokenString();
+            await mailService.SendEmailAsync(email, "Reset Password", $"Click on this link to reset password \n {token}");
+            response.Data = "Check your email and follow instructions to reset your password!";
+            return response;
+        }
+
         public async Task<bool> EmailExists(string email)
         {
             if (await context.Users.AnyAsync(user => user.Email.ToLower() == email.ToLower()))
@@ -96,6 +115,14 @@ namespace Repositories
                 }
                 return true;
             }
+        }
+
+        private string RandomTokenString()
+        {
+            using var rngToken = new RNGCryptoServiceProvider();
+            var randomBytes = new Byte[40];
+            rngToken.GetBytes(randomBytes);
+            return BitConverter.ToString(randomBytes).Replace("-", "");
         }
 
         private string CreateToken(User user)

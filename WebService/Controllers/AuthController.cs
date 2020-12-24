@@ -1,6 +1,7 @@
 ﻿using Dtos;
 using Dtos.UserDto;
 using Microsoft.AspNetCore.Mvc;
+using Models.Requests;
 using Models.Responses;
 using Models.Users;
 using Repositories;
@@ -57,6 +58,17 @@ namespace WebService.Controllers
         public async Task<IActionResult> Login(UserLoginDto request)
         {
             ServiceResponse<string> response = await authRepo.Login(request.Email, request.Password);
+            if (!response.Success)
+            {
+                return BadRequest(response);
+            }
+            return Ok(response);
+        }
+
+        [HttpPost("forgot-password")]
+        public async Task<IActionResult> ForgotPassword(ForgotPasswordRequest request)
+        {
+            ServiceResponse<string> response = await authRepo.ForgotPassword(request.Email);
             if (!response.Success)
             {
                 return BadRequest(response);

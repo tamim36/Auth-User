@@ -11,6 +11,7 @@ namespace Repositories
     {
         Task<ServiceResponse<int>> Register(User user, string password);
         Task<ServiceResponse<string>> Login(string email, string password);
+        Task<ServiceResponse<string>> ForgotPassword(string email);
         Task<bool> EmailExists(string email);
     }
 }
