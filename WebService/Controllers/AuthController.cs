@@ -66,9 +66,9 @@ namespace WebService.Controllers
         }
 
         [HttpPost("forgot-password")]
-        public async Task<IActionResult> ForgotPassword(ForgotPasswordRequest request)
+        public async Task<IActionResult> ForgotPassword(ForgotPasswordDto request)
         {
-            ServiceResponse<string> response = await authRepo.ForgotPassword(request);
+            ServiceResponse<string> response = await authRepo.ForgotPassword(request.Email);
             if (!response.Success)
             {
                 return BadRequest(response);

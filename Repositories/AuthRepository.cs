@@ -11,7 +11,6 @@ using System.Text;
 using System.Threading.Tasks;
 using Services;
 using System.Security.Cryptography;
-using Models.Requests;
 
 namespace Repositories
 {
@@ -69,10 +68,10 @@ namespace Repositories
             return response;
         }
 
-        public async Task<ServiceResponse<string>> ForgotPassword(ForgotPasswordRequest request)
+        public async Task<ServiceResponse<string>> ForgotPassword(string email)
         {
             ServiceResponse<string> response = new ServiceResponse<string>();
-            User user = await context.Users.SingleOrDefaultAsync(x => x.Email == request.Email);
+            User user = await context.Users.SingleOrDefaultAsync(x => x.Email == email);
             if (user == null)
             {
                 response.Success = false;
@@ -86,7 +85,7 @@ namespace Repositories
             await context.SaveChangesAsync();
             SendPasswordResetEmail(user);
 
-            response.Data = "Email sent successfully. Check mail to reset password.";
+            response.Message = "Email sent successfully. Check mail to reset password.";
             return response;
         }
 

@@ -5,7 +5,7 @@ using System.Text;
 
 namespace Models.Requests
 {
-    public class ForgotPasswordRequest
+    public class ForgotPasswordDto
     {
         [Required]
         [EmailAddress]
