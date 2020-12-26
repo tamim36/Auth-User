@@ -90,10 +90,37 @@ namespace Repositories
             return response;
         }
 
+        public async Task<ServiceResponse<string>> ResetPassword(string token, string password)
+        {
+            ServiceResponse<string> response = new ServiceResponse<string>();
+            var user = await context.Users.SingleOrDefaultAsync(user =>
+                user.ResetToken == token &&
+                user.ResetTokenExpires > DateTime.UtcNow);
+
+            if (user == null)
+            {
+                response.Success = false;
+                response.Message = $"Token have been expired.";
+                return response;
+            }
+
+            CreatePasswordHash(password, out byte[] PasswordHash, out byte[] PasswordSalt);
+            user.PasswordHash = PasswordHash;
+            user.PasswordSalt = PasswordSalt;
+            user.PasswordReset = DateTime.UtcNow;
+            user.ResetToken = null;
+            user.ResetTokenExpires = null;
+
+            context.Users.Update(user);
+            await context.SaveChangesAsync();
+            response.Message = "Password Reset Successfully.";
+            return response;
+        }
+
         private async void SendPasswordResetEmail(User user)
         {
             string message;
-            var resetUrl = $"{configuration.GetSection("AppUrl").Value}/auth/reset-password?token={user.ResetToken}";
+            var resetUrl = $"{configuration.GetSection("AppUrl").Value}/v1/auth/reset-password?token={user.ResetToken}";
             message = $@"<p>Please click the below link to reset your password, the link will be invalid after 15 minutes:</p>
                              <p><a href=""{resetUrl}"">{resetUrl}</a></p>";
             

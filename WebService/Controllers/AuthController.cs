@@ -36,7 +36,7 @@ namespace WebService.Controllers
             }
             catch (Exception ex)
             {
-                throw;
+                throw ex;
             }
 
         }
@@ -69,6 +69,17 @@ namespace WebService.Controllers
         public async Task<IActionResult> ForgotPassword(ForgotPasswordRequest request)
         {
             ServiceResponse<string> response = await authRepo.ForgotPassword(request);
+            if (!response.Success)
+            {
+                return BadRequest(response);
+            }
+            return Ok(response);
+        }
+
+        [HttpPost("reset-password")]
+        public async Task<IActionResult> ResetPassword(ResetPasswordDto request)
+        {
+            ServiceResponse<string> response = await authRepo.ResetPassword(request.Token, request.Password);
             if (!response.Success)
             {
                 return BadRequest(response);
