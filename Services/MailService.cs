@@ -21,17 +21,16 @@ namespace Services
         {
             this.mailSettings = mailSettings.Value;
         }
-        public async Task SendEmailAsync(string mail, string subject, string body)
+        public async Task SendEmailAsync(string toEmail, string subject, string body)
         {
             try
             {
                 var email = new MimeMessage();
                 email.Sender = MailboxAddress.Parse(mailSettings.SenderMail);
-                email.To.Add(MailboxAddress.Parse(mail));
+                email.To.Add(MailboxAddress.Parse(toEmail));
                 email.Subject = subject;
-                var builder = new BodyBuilder();
-                builder.HtmlBody = body;
-                email.Body = builder.ToMessageBody();
+                email.Body = new TextPart(MimeKit.Text.TextFormat.Html) { Text = body };
+
                 using var smtp = new SmtpClient();
                 await smtp.ConnectAsync(mailSettings.Server, mailSettings.Port, SecureSocketOptions.StartTls);
                 smtp.Authenticate(mailSettings.SenderMail, mailSettings.SenderMailPassword);

@@ -11,6 +11,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Services;
 using System.Security.Cryptography;
+using Models.Requests;
 
 namespace Repositories
 {
@@ -68,19 +69,39 @@ namespace Repositories
             return response;
         }
 
-        public async Task<ServiceResponse<string>> ForgotPassword(string email)
+        public async Task<ServiceResponse<string>> ForgotPassword(ForgotPasswordRequest request)
         {
             ServiceResponse<string> response = new ServiceResponse<string>();
-            if (!await EmailExists(email))
+            User user = await context.Users.SingleOrDefaultAsync(x => x.Email == request.Email);
+            if (user == null)
             {
                 response.Success = false;
                 response.Message = "No user found on that Email";
                 return response;
             }
-            var token = RandomTokenString();
-            await mailService.SendEmailAsync(email, "Reset Password", $"Click on this link to reset password \n {token}");
-            response.Data = "Check your email and follow instructions to reset your password!";
+            user.ResetToken = RandomTokenString();
+            user.ResetTokenExpires = DateTime.UtcNow.AddMinutes(15);
+
+            context.Users.Update(user);
+            await context.SaveChangesAsync();
+            SendPasswordResetEmail(user);
+
+            response.Data = "Email sent successfully. Check mail to reset password.";
             return response;
+        }
+
+        private async void SendPasswordResetEmail(User user)
+        {
+            string message;
+            var resetUrl = $"{configuration.GetSection("AppUrl").Value}/auth/reset-password?token={user.ResetToken}";
+            message = $@"<p>Please click the below link to reset your password, the link will be invalid after 15 minutes:</p>
+                             <p><a href=""{resetUrl}"">{resetUrl}</a></p>";
+            
+            await mailService.SendEmailAsync(
+                toEmail: user.Email,
+                subject: "Reset Password",
+                body: $@"<h4>Reset Your Password</h4>{message}"
+                );
         }
 
         public async Task<bool> EmailExists(string email)
