@@ -10,6 +10,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using Repositories;
+using Repositories.FacebookAuthentication;
 using Services;
 using System;
 using System.Collections.Generic;
@@ -36,6 +37,8 @@ namespace WebService
             services.AddControllers();
             services.AddScoped<IAuthRepository, AuthRepository>();
             services.AddTransient<IMailService, MailService>();
+            services.AddHttpClient();
+            services.AddScoped<IFacebookAuthRepository, FacebookAuthRepository>();
             services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(options =>
                 {

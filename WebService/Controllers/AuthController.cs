@@ -1,10 +1,12 @@
 ﻿using Dtos;
+using Dtos.ExternalProviderDtos;
 using Dtos.UserDto;
 using Microsoft.AspNetCore.Mvc;
 using Models.Requests;
 using Models.Responses;
 using Models.Users;
 using Repositories;
+using Repositories.FacebookAuthentication;
 using Services;
 using System;
 using System.Collections.Generic;
@@ -19,11 +21,13 @@ namespace WebService.Controllers
     {
         private readonly IAuthRepository authRepo;
         private readonly IMailService mailService;
+        private readonly IFacebookAuthRepository facebookAuth;
 
-        public AuthController(IAuthRepository authRepo, IMailService mailService)
+        public AuthController(IAuthRepository authRepo, IMailService mailService, IFacebookAuthRepository facebookAuth)
         {
             this.authRepo = authRepo;
             this.mailService = mailService;
+            this.facebookAuth = facebookAuth;
         }
 
         [HttpPost("send")]
@@ -80,6 +84,17 @@ namespace WebService.Controllers
         public async Task<IActionResult> ResetPassword(ResetPasswordDto request)
         {
             ServiceResponse<string> response = await authRepo.ResetPassword(request.Token, request.Password);
+            if (!response.Success)
+            {
+                return BadRequest(response);
+            }
+            return Ok(response);
+        }
+
+        [HttpPost("facebook")]
+        public async Task<IActionResult> FacebookLogin(FacebookLoginDto request)
+        {
+            ServiceResponse<string> response = await facebookAuth.LoginWithFacebook(request.AccessToken);
             if (!response.Success)
             {
                 return BadRequest(response);

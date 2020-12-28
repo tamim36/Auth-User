@@ -172,7 +172,7 @@ namespace Repositories
             return BitConverter.ToString(randomBytes).Replace("-", "");
         }
 
-        private string CreateToken(User user)
+        public string CreateToken(User user)
         {
             List<Claim> claims = new List<Claim>
             {
