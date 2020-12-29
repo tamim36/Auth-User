@@ -1,6 +1,7 @@
 ﻿using Dtos;
 using Dtos.ExternalProviderDtos;
 using Dtos.UserDto;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Models.Requests;
 using Models.Responses;
@@ -11,6 +12,7 @@ using Services;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
 
 namespace WebService.Controllers
@@ -95,6 +97,32 @@ namespace WebService.Controllers
         public async Task<IActionResult> FacebookLogin(FacebookLoginDto request)
         {
             ServiceResponse<string> response = await facebookAuth.LoginWithFacebook(request.AccessToken);
+            if (!response.Success)
+            {
+                return BadRequest(response);
+            }
+            return Ok(response);
+        }
+
+        [Authorize]
+        [HttpPost("Set-Password")]
+        public async Task<IActionResult> SetPassword(SetPasswordDto request)
+        {
+            int id = int.Parse(User.Claims.FirstOrDefault(claim => claim.Type == ClaimTypes.NameIdentifier).Value);
+            ServiceResponse<string> response = await authRepo.SetOrChangePassword(userId: id ,oldPassword: null, newPassword: request.Password);
+            if (!response.Success)
+            {
+                return BadRequest(response);
+            }
+            return Ok(response);
+        }
+
+        [Authorize]
+        [HttpPost("Change-Password")]
+        public async Task<IActionResult> ChangePassword(ChangePasswordDto request)
+        {
+            int id = int.Parse(User.Claims.FirstOrDefault(claim => claim.Type == ClaimTypes.NameIdentifier).Value);
+            ServiceResponse<string> response = await authRepo.SetOrChangePassword(userId: id, oldPassword: request.OldPassword, newPassword: request.NewPassword);
             if (!response.Success)
             {
                 return BadRequest(response);

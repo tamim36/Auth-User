@@ -37,6 +37,13 @@ namespace Repositories.FacebookAuthentication
             }
 
             var userInfo = await GetUserInfoAsync(access_token);
+            if (userInfo.Email == null)
+            {
+                response.Success = false;
+                response.Data = JsonConvert.SerializeObject(userInfo);
+                response.Message = "Email is required.";
+                return response;
+            }
             User user = await context.Users.FirstOrDefaultAsync(x => x.Email == userInfo.Email);
             if(user == null)
             {

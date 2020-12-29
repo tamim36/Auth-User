@@ -68,6 +68,35 @@ namespace Repositories
             return response;
         }
 
+        public async Task<ServiceResponse<string>> SetOrChangePassword(int userId, string oldPassword, string newPassword)
+        {
+            ServiceResponse<string> response = new ServiceResponse<string>();
+            User user = await context.Users.FirstOrDefaultAsync(x => x.Id == userId);
+            if (user == null)
+            {
+                response.Success = false;
+                response.Message = "Something went wrong. User not found.";
+                return response;
+            }
+
+            else if (oldPassword != null && !VerifyPasswordHash(oldPassword, user.PasswordHash, user.PasswordSalt))
+            {
+                response.Success = false;
+                response.Message = "Old Password doesn't verified.";
+                return response;
+            }
+
+            CreatePasswordHash(newPassword, out byte[] passwordHash, out byte[] passwordSalt);
+            user.PasswordHash = passwordHash;
+            user.PasswordSalt = passwordSalt;
+
+            context.Users.Update(user);
+            await context.SaveChangesAsync();
+            response.Data = user.Id.ToString();
+            response.Message = "Password modify successfully.";
+            return response;
+        }
+
         public async Task<ServiceResponse<string>> ForgotPassword(string email)
         {
             ServiceResponse<string> response = new ServiceResponse<string>();
