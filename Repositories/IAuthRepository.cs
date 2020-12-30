@@ -15,6 +15,9 @@ namespace Repositories
         Task<ServiceResponse<string>> ResetPassword(string token, string password);
         Task<bool> EmailExists(string email);
         Task<ServiceResponse<string>> SetOrChangePassword(int userId, string oldPassword, string newPassword);
+        Task<ServiceResponse<string>> RefreshToken(string token);
+        Task<ServiceResponse<string>> RevokeToken(string token);
+        void SetTokenToCookie(string token);
         string CreateToken(User user);
     }
 }

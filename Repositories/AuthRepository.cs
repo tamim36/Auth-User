@@ -11,6 +11,9 @@ using System.Text;
 using System.Threading.Tasks;
 using Services;
 using System.Security.Cryptography;
+using System.Linq;
+using Microsoft.AspNetCore.Http;
+using Ubiety.Dns.Core;
 
 namespace Repositories
 {
@@ -41,10 +44,17 @@ namespace Repositories
                 response.Success = false;
                 response.Message = "Wrong Password";
             }
-            else
-            {
-                response.Data = CreateToken(user);
-            }
+            var jwtToken = CreateToken(user);
+            var refreshToken = GenerateRefreshToken();
+            SetTokenToCookie(refreshToken.Token);
+            user.RefreshTokens.Add(refreshToken);
+
+            RemoveOldRefreshTokens(user);
+            context.Users.Update(user);
+            await context.SaveChangesAsync();
+
+            response.Data = jwtToken;
+            response.Message = refreshToken.Token;
             return response;
         }
 
@@ -66,6 +76,31 @@ namespace Repositories
             await context.SaveChangesAsync();
             response.Data = user.Id;
             return response;
+        }
+
+        public async Task<ServiceResponse<string>> RefreshToken(string token)
+        {
+            ServiceResponse<string> response = new ServiceResponse<string>();
+            var (refreshToken, user) = GetRefreshToken(token);
+            var newRefreshToken = GenerateRefreshToken();
+            refreshToken.Revoked = DateTime.UtcNow;
+            refreshToken.ReplacedByToken = newRefreshToken.Token;
+            user.RefreshTokens.Add(newRefreshToken);
+
+            SetTokenToCookie(newRefreshToken.Token);
+            RemoveOldRefreshTokens(user);
+
+            context.Update(user);
+            await context.SaveChangesAsync();
+
+            response.Data = CreateToken(user);
+            response.Message = $"New Refresh Token is -> {newRefreshToken.Token}";
+            return response;
+        }
+
+        public async Task<ServiceResponse<string>> RevokeToken(string token)
+        {
+
         }
 
         public async Task<ServiceResponse<string>> SetOrChangePassword(int userId, string oldPassword, string newPassword)
@@ -191,6 +226,43 @@ namespace Repositories
                 }
                 return true;
             }
+        }
+
+        private RefreshToken GenerateRefreshToken()
+        {
+            return new RefreshToken
+            {
+                Token = RandomTokenString(),
+                Expires = DateTime.UtcNow.AddSeconds(30),
+                Created = DateTime.UtcNow
+            };
+        }
+
+        private async (RefreshToken, User) GetRefreshToken(string token)
+        {
+            var user = await context.Users.SingleOrDefaultAsync(u => u.RefreshTokens.Any(t => t.Token == token));
+            if (user == null) throw new Exception("Invalid token");
+            var refreshToken = user.RefreshTokens.Single(x => x.Token == token);
+            if (!refreshToken.IsActive) throw new Exception("Invalid Token");
+            return (refreshToken, user);
+        }
+
+        private void RemoveOldRefreshTokens(User user)
+        {
+            user.RefreshTokens.RemoveAll(x =>
+                !x.IsActive &&
+                x.Created.AddDays(configuration.GetSection("AppSettings:RefreshTokenTTL").Value <= DateTime.UtcNow)
+            );
+        }
+
+        public void SetTokenToCookie(string token)
+        {
+            var cookieOptions = new CookieOptions
+            {
+                HttpOnly = true,
+                Expires = DateTime.UtcNow.AddDays(7)
+            };
+            Response.Cookies.Append("refreshToken", token, cookieOptions);
         }
 
         private string RandomTokenString()

@@ -71,6 +71,18 @@ namespace WebService.Controllers
             return Ok(response);
         }
 
+        [HttpPost("Refresh-Token")]
+        public async Task<IActionResult> RefreshToken()
+        {
+            var refreshToken = Request.Cookies["refreshToken"];
+            ServiceResponse<string> response = await authRepo.RefreshToken(refreshToken);
+            if (!response.Success)
+            {
+                return BadRequest(response);
+            }
+            return Ok(response);
+        }
+
         [HttpPost("forgot-password")]
         public async Task<IActionResult> ForgotPassword(ForgotPasswordDto request)
         {
