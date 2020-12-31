@@ -13,7 +13,6 @@ using Services;
 using System.Security.Cryptography;
 using System.Linq;
 using Microsoft.AspNetCore.Http;
-using Ubiety.Dns.Core;
 
 namespace Repositories
 {
@@ -46,7 +45,6 @@ namespace Repositories
             }
             var jwtToken = CreateToken(user);
             var refreshToken = GenerateRefreshToken();
-            SetTokenToCookie(refreshToken.Token);
             user.RefreshTokens.Add(refreshToken);
 
             RemoveOldRefreshTokens(user);
@@ -87,20 +85,31 @@ namespace Repositories
             refreshToken.ReplacedByToken = newRefreshToken.Token;
             user.RefreshTokens.Add(newRefreshToken);
 
-            SetTokenToCookie(newRefreshToken.Token);
             RemoveOldRefreshTokens(user);
-
             context.Update(user);
             await context.SaveChangesAsync();
 
             response.Data = CreateToken(user);
-            response.Message = $"New Refresh Token is -> {newRefreshToken.Token}";
+            response.Message = newRefreshToken.Token;
             return response;
         }
 
         public async Task<ServiceResponse<string>> RevokeToken(string token)
         {
+            ServiceResponse<string> response = new ServiceResponse<string>();
+            if (string.IsNullOrEmpty(token))
+            {
+                response.Success = false;
+                response.Message = "Token is required.";
+            }
+            var (refreshToken, account) = GetRefreshToken(token);
+            refreshToken.Revoked = DateTime.UtcNow;
+            context.Update(account);
+            await context.SaveChangesAsync();
 
+            response.Data = refreshToken.Token;
+            response.Message = account.ToString();
+            return response;
         }
 
         public async Task<ServiceResponse<string>> SetOrChangePassword(int userId, string oldPassword, string newPassword)
@@ -238,9 +247,9 @@ namespace Repositories
             };
         }
 
-        private async (RefreshToken, User) GetRefreshToken(string token)
+        private (RefreshToken, User) GetRefreshToken(string token)
         {
-            var user = await context.Users.SingleOrDefaultAsync(u => u.RefreshTokens.Any(t => t.Token == token));
+            var user = context.Users.SingleOrDefault(u => u.RefreshTokens.Any(t => t.Token == token));
             if (user == null) throw new Exception("Invalid token");
             var refreshToken = user.RefreshTokens.Single(x => x.Token == token);
             if (!refreshToken.IsActive) throw new Exception("Invalid Token");
@@ -251,18 +260,7 @@ namespace Repositories
         {
             user.RefreshTokens.RemoveAll(x =>
                 !x.IsActive &&
-                x.Created.AddDays(configuration.GetSection("AppSettings:RefreshTokenTTL").Value <= DateTime.UtcNow)
-            );
-        }
-
-        public void SetTokenToCookie(string token)
-        {
-            var cookieOptions = new CookieOptions
-            {
-                HttpOnly = true,
-                Expires = DateTime.UtcNow.AddDays(7)
-            };
-            Response.Cookies.Append("refreshToken", token, cookieOptions);
+                x.Created.AddDays(2) <= DateTime.UtcNow);
         }
 
         private string RandomTokenString()

@@ -2,6 +2,7 @@
 using Dtos.ExternalProviderDtos;
 using Dtos.UserDto;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Models.Requests;
 using Models.Responses;
@@ -68,6 +69,7 @@ namespace WebService.Controllers
             {
                 return BadRequest(response);
             }
+            SetTokenToCookie(response.Message);
             return Ok(response);
         }
 
@@ -76,6 +78,20 @@ namespace WebService.Controllers
         {
             var refreshToken = Request.Cookies["refreshToken"];
             ServiceResponse<string> response = await authRepo.RefreshToken(refreshToken);
+            if (!response.Success)
+            {
+                return BadRequest(response);
+            }
+            SetTokenToCookie(response.Message);
+            return Ok(response);
+        }
+
+        [HttpPost("Revoke-Token")]
+        public async Task<IActionResult> RevokeToken(RevokeTokenDto request)
+        {
+            var token = request.Token ?? Request.Cookies["refreshToken"];
+            ServiceResponse<string> response = await authRepo.RevokeToken(token);
+
             if (!response.Success)
             {
                 return BadRequest(response);
@@ -140,6 +156,17 @@ namespace WebService.Controllers
                 return BadRequest(response);
             }
             return Ok(response);
+        }
+
+        public void SetTokenToCookie(string token)
+        {
+            var cookieOptions = new CookieOptions
+            {
+                HttpOnly = true,
+                Expires = DateTime.UtcNow.AddDays(7)
+            };
+            Response.Cookies.Append(
+                "refreshToken", token, cookieOptions);
         }
     }
 }
