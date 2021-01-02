@@ -64,7 +64,7 @@ namespace WebService.Controllers
         [HttpPost("Login")]
         public async Task<IActionResult> Login(UserLoginDto request)
         {
-            ServiceResponse<string> response = await authRepo.Login(request.Email, request.Password);
+            ServiceResponse<Tokens> response = await authRepo.Login(request.Email, request.Password);
             if (!response.Success)
             {
                 return BadRequest(response);
@@ -77,7 +77,7 @@ namespace WebService.Controllers
         public async Task<IActionResult> RefreshToken()
         {
             var refreshToken = Request.Cookies["refreshToken"];
-            ServiceResponse<string> response = await authRepo.RefreshToken(refreshToken);
+            ServiceResponse<Tokens> response = await authRepo.RefreshToken(refreshToken);
             if (!response.Success)
             {
                 return BadRequest(response);

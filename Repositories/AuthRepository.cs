@@ -29,10 +29,10 @@ namespace Repositories
             this.mailService = mailService;
         }
 
-        public async Task<ServiceResponse<string>> Login(string email, string password)
+        public async Task<ServiceResponse<Tokens>> Login(string email, string password)
         {
-            ServiceResponse<string> response = new ServiceResponse<string>();
-            User user = await context.Users.FirstOrDefaultAsync(user => user.Email.ToLower().Equals(email.ToLower()));
+            ServiceResponse<Tokens> response = new ServiceResponse<Tokens> { Data = new Tokens() };
+            User user = await context.Users.Include(u => u.RefreshTokens).FirstOrDefaultAsync(user => user.Email.ToLower().Equals(email.ToLower()));
             if (user == null)
             {
                 response.Success = false;
@@ -51,8 +51,9 @@ namespace Repositories
             context.Users.Update(user);
             await context.SaveChangesAsync();
 
-            response.Data = jwtToken;
-            response.Message = refreshToken.Token;
+            response.Data.JwtToken = jwtToken;
+            response.Data.RefreshToken = refreshToken.Token;
+            response.Message = "Login Successful";
             return response;
         }
 
@@ -76,9 +77,9 @@ namespace Repositories
             return response;
         }
 
-        public async Task<ServiceResponse<string>> RefreshToken(string token)
+        public async Task<ServiceResponse<Tokens>> RefreshToken(string token)
         {
-            ServiceResponse<string> response = new ServiceResponse<string>();
+            ServiceResponse<Tokens> response = new ServiceResponse<Tokens> { Data = new Tokens() };
             var (refreshToken, user) = GetRefreshToken(token);
             var newRefreshToken = GenerateRefreshToken();
             refreshToken.Revoked = DateTime.UtcNow;
@@ -89,14 +90,15 @@ namespace Repositories
             context.Update(user);
             await context.SaveChangesAsync();
 
-            response.Data = CreateToken(user);
-            response.Message = newRefreshToken.Token;
+            response.Data.JwtToken = CreateToken(user);
+            response.Data.RefreshToken = newRefreshToken.Token;
+            response.Message = "Refresh token called successfull";
             return response;
         }
 
-        public async Task<ServiceResponse<string>> RevokeToken(string token)
+        public async Task<ServiceResponse<Tokens>> RevokeToken(string token)
         {
-            ServiceResponse<string> response = new ServiceResponse<string>();
+            ServiceResponse<Tokens> response = new ServiceResponse<Tokens> { Data = new Tokens()};
             if (string.IsNullOrEmpty(token))
             {
                 response.Success = false;
@@ -107,8 +109,8 @@ namespace Repositories
             context.Update(account);
             await context.SaveChangesAsync();
 
-            response.Data = refreshToken.Token;
-            response.Message = account.ToString();
+            response.Data.RefreshToken = refreshToken.Token;
+            response.Message = $"user is : {account.ToString()}";
             return response;
         }
 
