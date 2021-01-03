@@ -69,7 +69,7 @@ namespace WebService.Controllers
             {
                 return BadRequest(response);
             }
-            SetTokenToCookie(response.Message);
+            SetTokenToCookie(response.Data.RefreshToken);
             return Ok(response);
         }
 
@@ -82,7 +82,7 @@ namespace WebService.Controllers
             {
                 return BadRequest(response);
             }
-            SetTokenToCookie(response.Message);
+            SetTokenToCookie(response.Data.RefreshToken);
             return Ok(response);
         }
 
@@ -90,7 +90,7 @@ namespace WebService.Controllers
         public async Task<IActionResult> RevokeToken(RevokeTokenDto request)
         {
             var token = request.Token ?? Request.Cookies["refreshToken"];
-            ServiceResponse<string> response = await authRepo.RevokeToken(token);
+            ServiceResponse<Tokens> response = await authRepo.RevokeToken(token);
 
             if (!response.Success)
             {
@@ -163,7 +163,7 @@ namespace WebService.Controllers
             var cookieOptions = new CookieOptions
             {
                 HttpOnly = true,
-                Expires = DateTime.UtcNow.AddDays(7)
+                Expires = DateTime.UtcNow.AddMinutes(1)
             };
             Response.Cookies.Append(
                 "refreshToken", token, cookieOptions);

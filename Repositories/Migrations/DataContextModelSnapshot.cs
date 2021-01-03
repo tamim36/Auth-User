@@ -17,37 +17,6 @@ namespace Repositories.Migrations
                 .HasAnnotation("ProductVersion", "3.1.10")
                 .HasAnnotation("Relational:MaxIdentifierLength", 64);
 
-            modelBuilder.Entity("Models.Users.RefreshToken", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("Created")
-                        .HasColumnType("datetime");
-
-                    b.Property<DateTime>("Expires")
-                        .HasColumnType("datetime");
-
-                    b.Property<string>("ReplacedByToken")
-                        .HasColumnType("text");
-
-                    b.Property<DateTime?>("Revoked")
-                        .HasColumnType("datetime");
-
-                    b.Property<string>("Token")
-                        .HasColumnType("text");
-
-                    b.Property<int?>("UserId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("RefreshToken");
-                });
-
             modelBuilder.Entity("Models.Users.User", b =>
                 {
                     b.Property<int>("Id")
@@ -107,11 +76,41 @@ namespace Repositories.Migrations
                     b.ToTable("Users");
                 });
 
-            modelBuilder.Entity("Models.Users.RefreshToken", b =>
+            modelBuilder.Entity("Models.Users.User", b =>
                 {
-                    b.HasOne("Models.Users.User", "User")
-                        .WithMany("RefreshTokens")
-                        .HasForeignKey("UserId");
+                    b.OwnsMany("Models.Users.RefreshToken", "RefreshTokens", b1 =>
+                        {
+                            b1.Property<int>("Id")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("int");
+
+                            b1.Property<DateTime>("Created")
+                                .HasColumnType("datetime");
+
+                            b1.Property<DateTime>("Expires")
+                                .HasColumnType("datetime");
+
+                            b1.Property<string>("ReplacedByToken")
+                                .HasColumnType("text");
+
+                            b1.Property<DateTime?>("Revoked")
+                                .HasColumnType("datetime");
+
+                            b1.Property<string>("Token")
+                                .HasColumnType("text");
+
+                            b1.Property<int>("UserId")
+                                .HasColumnType("int");
+
+                            b1.HasKey("Id");
+
+                            b1.HasIndex("UserId");
+
+                            b1.ToTable("RefreshToken");
+
+                            b1.WithOwner("User")
+                                .HasForeignKey("UserId");
+                        });
                 });
 #pragma warning restore 612, 618
         }

@@ -80,7 +80,7 @@ namespace Repositories
         public async Task<ServiceResponse<Tokens>> RefreshToken(string token)
         {
             ServiceResponse<Tokens> response = new ServiceResponse<Tokens> { Data = new Tokens() };
-            var (refreshToken, user) = GetRefreshToken(token);
+            var (refreshToken, user) = GetRefreshToken(token, ref response);
             var newRefreshToken = GenerateRefreshToken();
             refreshToken.Revoked = DateTime.UtcNow;
             refreshToken.ReplacedByToken = newRefreshToken.Token;
@@ -104,13 +104,17 @@ namespace Repositories
                 response.Success = false;
                 response.Message = "Token is required.";
             }
-            var (refreshToken, account) = GetRefreshToken(token);
+            var (refreshToken, user) = GetRefreshToken(token, ref response);
+            if (!response.Success)
+            {
+                return response;
+            }
             refreshToken.Revoked = DateTime.UtcNow;
-            context.Update(account);
+            context.Update(user);
             await context.SaveChangesAsync();
 
             response.Data.RefreshToken = refreshToken.Token;
-            response.Message = $"user is : {account.ToString()}";
+            response.Message = $"user is : {user.Id.ToString()}";
             return response;
         }
 
@@ -244,25 +248,35 @@ namespace Repositories
             return new RefreshToken
             {
                 Token = RandomTokenString(),
-                Expires = DateTime.UtcNow.AddSeconds(30),
+                Expires = DateTime.UtcNow.AddDays(2),
                 Created = DateTime.UtcNow
             };
         }
 
-        private (RefreshToken, User) GetRefreshToken(string token)
+        private (RefreshToken, User) GetRefreshToken(string token, ref ServiceResponse<Tokens> response)
         {
-            var user = context.Users.SingleOrDefault(u => u.RefreshTokens.Any(t => t.Token == token));
-            if (user == null) throw new Exception("Invalid token");
-            var refreshToken = user.RefreshTokens.Single(x => x.Token == token);
-            if (!refreshToken.IsActive) throw new Exception("Invalid Token");
+            var user = context.Users.Include(u => u.RefreshTokens).SingleOrDefault(u => u.RefreshTokens.Any(t => t.Token == token));
+            if (user == null)
+            {
+                response.Success = false;
+                response.Message = "User with that token isn't available.";
+                return (null, user);
+            }
+            var refreshToken = user.RefreshTokens.FirstOrDefault(x => x.Token == token);
+            if (!refreshToken.IsActive)
+            {
+                response.Success = false;
+                response.Message = "Invalid Token";
+            }
             return (refreshToken, user);
         }
 
         private void RemoveOldRefreshTokens(User user)
         {
-            user.RefreshTokens.RemoveAll(x =>
+            var expiredTokens = user.RefreshTokens.RemoveAll(x =>
                 !x.IsActive &&
-                x.Created.AddDays(2) <= DateTime.UtcNow);
+                x.Created.AddSeconds(10) <= DateTime.UtcNow);
+            //context.Users.Where(u => u.RefreshTokens.Select(t => t.User == null).ToList().ForEach(context.Users.Remove()));
         }
 
         private string RandomTokenString()
