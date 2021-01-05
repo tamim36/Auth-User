@@ -4,6 +4,7 @@ using Dtos.UserDto;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using Models.Requests;
 using Models.Responses;
 using Models.Users;
@@ -15,6 +16,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
+using Utilities;
 
 namespace WebService.Controllers
 {
@@ -25,12 +27,14 @@ namespace WebService.Controllers
         private readonly IAuthRepository authRepo;
         private readonly IMailService mailService;
         private readonly IFacebookAuthRepository facebookAuth;
+        private readonly TokenSettings tokenSettings;
 
-        public AuthController(IAuthRepository authRepo, IMailService mailService, IFacebookAuthRepository facebookAuth)
+        public AuthController(IAuthRepository authRepo, IMailService mailService, IFacebookAuthRepository facebookAuth, IOptions<TokenSettings> tokenSettings)
         {
             this.authRepo = authRepo;
             this.mailService = mailService;
             this.facebookAuth = facebookAuth;
+            this.tokenSettings = tokenSettings.Value;
         }
 
         [HttpPost("send")]
@@ -163,7 +167,7 @@ namespace WebService.Controllers
             var cookieOptions = new CookieOptions
             {
                 HttpOnly = true,
-                Expires = DateTime.UtcNow.AddMinutes(1)
+                Expires = DateTime.UtcNow.AddDays(tokenSettings.RefreshTokenExpires)
             };
             Response.Cookies.Append(
                 "refreshToken", token, cookieOptions);

@@ -1,4 +1,3 @@
-using Entities;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -17,6 +16,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Utilities;
 
 namespace WebService
 {
@@ -34,6 +34,8 @@ namespace WebService
         {
             services.AddDbContextPool<DataContext>(x => x.UseMySQL(Configuration.GetConnectionString("DefaultConnection")));
             services.Configure<MailSettings>(Configuration.GetSection("MailSettings"));
+            services.Configure<TokenSettings>(Configuration.GetSection("TokenSettings"));
+            services.Configure<AppSettings>(Configuration.GetSection("AppSettings"));
             services.AddControllers();
             services.AddScoped<IAuthRepository, AuthRepository>();
             services.AddTransient<IMailService, MailService>();
@@ -45,9 +47,10 @@ namespace WebService
                     options.TokenValidationParameters = new TokenValidationParameters
                     {
                         ValidateIssuerSigningKey = true,
-                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(Configuration.GetSection("AppSettings:Token").Value)),
+                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(Configuration.GetSection("TokenSettings:TokenSecretKey").Value)),
                         ValidateIssuer = false,
-                        ValidateAudience = false
+                        ValidateAudience = false,
+                        ClockSkew = TimeSpan.Zero
                     };
                 });
         }

@@ -1,5 +1,4 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using Models.Users;
 using Models.Responses;
@@ -13,20 +12,24 @@ using Services;
 using System.Security.Cryptography;
 using System.Linq;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Options;
+using Utilities;
 
 namespace Repositories
 {
     public class AuthRepository : IAuthRepository
     {
         private readonly DataContext context;
-        private readonly IConfiguration configuration;
         private readonly IMailService mailService;
+        private readonly TokenSettings tokenSettings;
+        private readonly AppSettings appSettings;
 
-        public AuthRepository(DataContext context, IConfiguration configuration, IMailService mailService)
+        public AuthRepository(DataContext context, IMailService mailService, IOptions<TokenSettings> tokenSettings, IOptions<AppSettings> appSettings)
         {
             this.context = context;
-            this.configuration = configuration;
             this.mailService = mailService;
+            this.tokenSettings = tokenSettings.Value;
+            this.appSettings = appSettings.Value;
         }
 
         public async Task<ServiceResponse<Tokens>> Login(string email, string password)
@@ -80,6 +83,12 @@ namespace Repositories
         public async Task<ServiceResponse<Tokens>> RefreshToken(string token)
         {
             ServiceResponse<Tokens> response = new ServiceResponse<Tokens> { Data = new Tokens() };
+            if (string.IsNullOrEmpty(token))
+            {
+                response.Success = false;
+                response.Message = "Token is Expired.";
+                return response;
+            }
             var (refreshToken, user) = GetRefreshToken(token, ref response);
             var newRefreshToken = GenerateRefreshToken();
             refreshToken.Revoked = DateTime.UtcNow;
@@ -103,6 +112,7 @@ namespace Repositories
             {
                 response.Success = false;
                 response.Message = "Token is required.";
+                return response;
             }
             var (refreshToken, user) = GetRefreshToken(token, ref response);
             if (!response.Success)
@@ -198,7 +208,7 @@ namespace Repositories
         private async void SendPasswordResetEmail(User user)
         {
             string message;
-            var resetUrl = $"{configuration.GetSection("AppUrl").Value}/v1/auth/reset-password?token={user.ResetToken}";
+            var resetUrl = $"{appSettings.AppIISExpressUrl}/v1/auth/reset-password?token={user.ResetToken}";
             message = $@"<p>Please click the below link to reset your password, the link will be invalid after 15 minutes:</p>
                              <p><a href=""{resetUrl}"">{resetUrl}</a></p>";
             
@@ -248,7 +258,7 @@ namespace Repositories
             return new RefreshToken
             {
                 Token = RandomTokenString(),
-                Expires = DateTime.UtcNow.AddDays(2),
+                Expires = DateTime.UtcNow.AddDays(tokenSettings.RefreshTokenExpires),
                 Created = DateTime.UtcNow
             };
         }
@@ -273,10 +283,9 @@ namespace Repositories
 
         private void RemoveOldRefreshTokens(User user)
         {
-            var expiredTokens = user.RefreshTokens.RemoveAll(x =>
+            user.RefreshTokens.RemoveAll(x =>
                 !x.IsActive &&
-                x.Created.AddSeconds(10) <= DateTime.UtcNow);
-            //context.Users.Where(u => u.RefreshTokens.Select(t => t.User == null).ToList().ForEach(context.Users.Remove()));
+                x.Created.AddDays(tokenSettings.RefreshTokenTTL) <= DateTime.UtcNow);
         }
 
         private string RandomTokenString()
@@ -296,7 +305,7 @@ namespace Repositories
             };
 
             SymmetricSecurityKey key = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(configuration.GetSection("AppSettings:Token").Value)
+                Encoding.UTF8.GetBytes(tokenSettings.TokenSecretKey)
             );
 
             SigningCredentials creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha512Signature);
@@ -304,7 +313,7 @@ namespace Repositories
             SecurityTokenDescriptor tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(claims),
-                Expires = DateTime.Now.AddDays(1),
+                Expires = DateTime.Now.AddMinutes(tokenSettings.JwtTokenExpires),
                 SigningCredentials = creds
             };
 
